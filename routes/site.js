@@ -31,9 +31,26 @@ var upload = multer({
 
 //inserts image from two input fields "image_name" and "verification"
 //'image_name = id from front end && 10 = maximum files allowed
-router.post("/addSite", upload.fields([{name: 'image_name',maxCount: 10}, {
-  name: "verification",  maxCount: 10}]), (req, res) => {
+router.post("/addSite", upload.fields([{name: 'image_name',maxCount: 10}, {name: "verification",maxCount: 10}]), (req, res) => {
+if(req.files){
+  var image_name = req.files['image_name'].map(file => {
+    let imagePath = file.path;
+    let imagePath2 = 'public/uploads/site/SITE' + '-' + Date.now() + file.originalname;
 
+    //compressing image size
+    sharp(imagePath).jpeg({quality: 25,progressive: true}).toFile(imagePath2);
+    return imagePath2;
+  });
+
+
+  var verification_image = req.files['verification'].map(file => {
+    let imagePath = file.path;
+    let imagePath2 = 'public/uploads/verification/SITE' + '-' + Date.now() + file.originalname;
+    sharp(imagePath).jpeg({quality: 25,progressive: true}).toFile(imagePath2);
+    return imagePath2;
+  });
+
+}
   const site = new Site({
     legal_name: req.body.legal_name,
     pan_vat: req.body.pan_vat,
@@ -46,58 +63,183 @@ router.post("/addSite", upload.fields([{name: 'image_name',maxCount: 10}, {
     store_location: {
       'type': "Point",
       'coordinates': [req.body.longitude, req.body.latitude]
-    }, //first field in coordinates array is longitude, not latitude
-    image_names: req.files['image_name'].map(file => {
-      let imagePath = file.path;
-      let imagePath2 = 'public/uploads/site/SITE' + '-' + Date.now() + file.originalname;
-      sharp(imagePath)
-        .jpeg({ quality: 1, progressive: true })
-        .toFile(imagePath2);
-      return imagePath2;
-    }),
-    verification_image: req.files['verification'].map(file => {
-      let imagePath = file.path;
-      let imagePath2 = 'public/uploads/verification/SITE' + '-' + Date.now() + file.originalname;
-      console.log(imagePath2)
-      sharp(imagePath)
-        .jpeg({ quality: 1, progressive: true })
-        .toFile(imagePath2);
-      return imagePath2;
-    })
-
+    } //first field in coordinates array is longitude, not latitude
   });
 
-  site
-    .save()
-    .then(result => {
-      res.status(201).json({
-        message_success: "Added Successfully"
-      });
-    })
-    .catch(err => {
+  site.save().then(async function(result) {
+      
+      try{
+        if(image_name){
+          for (i = 0; i < image_name.length; i++) {
+            result.image_names = result.image_names.concat({
+              image_name: image_name[i]
+            });
+          }
+        }
+        if(verification_image){
+          for (a = 0; a < verification_image.length; a++) {
+            result.verification_images = result.verification_images.concat({
+              image_name: verification_image[a]
+            });
+           
+          }
+        }
+        
+        await result.save();
+        res.status(201).json({
+          message_success:"Added Successfully"
+        });
+      }
+      catch(err ) {
+        res.status(500).send(
+          console.log(err)
+        );
+        }
+      }).catch(err => {
       res.status(500).send(
-        err
+        console.log(err)
       );
+
     });
 });
 
-router.get('/siteList', function (req, res) {
-  Site.find().then(function (siteList) {
-     res.json(
-         siteList
-     );
- });
+//gets five recentyly added sites
+router.get('/recentSite', function (req, res) {
+  Site.find().limit(5).select("-__v").sort({
+    'createdAt': "desc"
+  }).then(function (siteList) {
+    res.json(
+      siteList
+    );
+  }).catch(function (e) {
+    res.send(e);
+  });
 });
 
-router.put('/verifySites/:id', function (req, res) {
-  siteId = req.params.id.toString();
-
-  Site.findByIdAndUpdate(siteId, req.body, {
-      new: true
-  }).then(function (site) {
-      res.send(site);
+//gets all sites in descending order
+router.get('/allSites', function (req, res) {
+  Site.find().select("-__v").sort({
+    'createdAt': "desc"
+  }).then(function (siteList) {
+    res.json(
+      siteList
+    );
   }).catch(function (e) {
-      res.send(e);
+    res.send(e);
   });
+});
+
+//Shows detail of single site
+router.get('/singleSite/:id', function (req, res) {
+  var id = req.params.id.toString();
+  Site.find({
+    _id: id
+  }).select("-__v").then(function (siteList) {
+    res.json(
+      siteList
+    );
+  }).catch(function (e) {
+    res.send(e);
+  });
+});
+
+// router.post('/removeSiteImage/:id',  function (req, res) {
+//   var id = req.params.id.toString(); //id of the site
+//   var site_image_id=req.body.site_image_array; 
+//   var verification_image_id=req.body.verification_image_array;
+
+
+//   Site.findByIdAndUpdate(
+//     id, { $pull: { "image_names": { _id: site_image_id} , "verification_images": { _id: verification_image_id} } }, { safe: true, upsert: true },
+//     function(err, result) {
+//         if (err) { return handleError(res, err); }
+//         res.status(200).json(result);
+//     });
+
+// });
+
+// router.post('/removeVerificationImage/:id',  function (req, res) {
+//   var id = req.params.id.toString(); //id of the site
+//   var verification_image_id=req.body.verification_image_array; //id of individal image to be deleted 
+//   if(verification_image_id!=null){
+//   Site.findByIdAndUpdate(
+//     id, { $pull: { "verification_images": { _id: verification_image_id} } }, { safe: true, upsert: true },
+//     function(err, result) {
+//         if (err) { return handleError(res, err); }
+//         return res.status(200).json(result);
+//     });
+//   }
+// });
+
+//update remarks and verification status
+router.put('/updateSite/:id',upload.fields([{name: 'image_name',maxCount: 10}, {name: "verification",maxCount: 10}]), function (req, res) {
+  siteId = req.params.id.toString();
+  var site_image_id=req.body.site_image_array; 
+  var verification_image_id=req.body.verification_image_array;
+
+  if (req.files) {
+    var image_name = req.files['image_name'].map(file => {
+      let imagePath = file.path;
+      let imagePath2 = 'public/uploads/site/SITE' + '-' + Date.now() + file.originalname;
+  
+      //compressing image size
+      sharp(imagePath).jpeg({quality: 25,progressive: true}).toFile(imagePath2);
+      return imagePath2;
+    });
+
+ 
+    var verification_image = req.files['verification'].map(file => {
+      let imagePath = file.path;
+      let imagePath2 = 'public/uploads/verification/SITE' + '-' + Date.now() + file.originalname;
+      sharp(imagePath).jpeg({quality: 25,progressive: true}).toFile(imagePath2);
+      return imagePath2;
+    });
+  }
+
+
+  Site.findByIdAndUpdate(
+    siteId, { $pull: { "image_names": { _id: site_image_id} , "verification_images": { _id: verification_image_id} } }, { safe: true, upsert: true },
+    function(err, result) {
+        if (err) { return handleError(res, err); }
+        if(result){
+          Site.findByIdAndUpdate(siteId, req.body, {
+            new: true
+        }).then( async function (site) {
+        
+              try{
+                if(image_name){
+                   for (i = 0; i < image_name.length; i++) {
+                  site.image_names = site.image_names.concat({
+                    image_name: image_name[i]
+                  });
+                }
+              }
+              if(verification_image){
+              for (a = 0; a < verification_image.length; a++) {
+                site.verification_images = site.verification_images.concat({
+                  image_name: verification_image[a]
+                });
+               
+              }
+            }
+                await site.save();
+                res.status(201).json({
+                  message:"Site Updated Successfully"
+                });
+              }
+              catch(err ) {
+                res.status(500).send(
+                  console.log(err)
+                );
+                }
+              
+        }).catch(function (e) {
+            res.send(e);
+            console.log(e)
+        });
+        }
+    });
+
+  
 });
 module.exports = router;

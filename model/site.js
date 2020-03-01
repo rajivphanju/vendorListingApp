@@ -7,7 +7,7 @@ const Schema = mongoose.Schema;
 const siteSchema = new Schema({
     legal_name: {
         type: String,
-        unique: true,
+        // unique: true,
         required: [true, 'Name is Empty']
     },
     pan_vat: {
@@ -61,15 +61,30 @@ const siteSchema = new Schema({
             required: true
         }
     },
-
-    image_names: {
-        type: [String],
-        required: true
-    },
-    verification_image: {
-        type: [String],
-        required: true
-    },
+    image_names: [
+        {
+          image_name: {
+            type: String,
+           required: true
+          }
+        }
+      ],
+      verification_images: [
+        {
+          image_name: {
+            type: String,
+           required: true
+          }
+        }
+      ],
+    // image_names: {
+    //     type: [String],
+    //     required: true
+    // },
+    // verification_image: {
+    //     type: [String],
+    //     required: true
+    // },
     status: {
         type: String,
         default: "pending",
@@ -78,10 +93,8 @@ const siteSchema = new Schema({
     remarks: {
         type: String
     }
-
-
-
-
+}, {
+    timestamps: true
 });
 siteSchema.plugin(uniqueValidator);
 

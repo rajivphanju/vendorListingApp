@@ -10,7 +10,7 @@ const connect = mongoose.connect(url, {
 connect.then(
   db => {
     console.log(
-      "Connected to mongodb server at port 27017 with db name vendorListingApp"
+      "Connected to mongodb server at port 3000 with db name vendorListingApp"
     );
   },
   err => {
