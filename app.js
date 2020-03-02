@@ -6,6 +6,9 @@ const cors = require("cors");
 const mongoose = require("./dbHelper/db");
 
 const siteRoute = require("./routes/site");
+const usersRoute = require("./routes/user");
+
+
 
 app.use(morgan("dev"));
 app.use(bodyparser.urlencoded({extended:false}));
@@ -15,7 +18,7 @@ app.use('/uploads', express.static('./public/uploads'));
 
 
 app.use("/site", siteRoute);
-
+app.use("/user", usersRoute);
 
 
 

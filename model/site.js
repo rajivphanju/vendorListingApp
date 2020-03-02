@@ -61,22 +61,18 @@ const siteSchema = new Schema({
             required: true
         }
     },
-    image_names: [
-        {
-          image_name: {
+    image_names: [{
+        image_name: {
             type: String,
-           required: true
-          }
+            required: true
         }
-      ],
-      verification_images: [
-        {
-          image_name: {
+    }],
+    verification_images: [{
+        image_name: {
             type: String,
-           required: true
-          }
+            required: true
         }
-      ],
+    }],
     // image_names: {
     //     type: [String],
     //     required: true
